@@ -7,32 +7,33 @@ from transformers import (
     AutoModelForSequenceClassification,
     AutoModelForSeq2SeqLM
 )
+from huggingface_hub import hf_hub_download
 
-BASE_PATH = os.getenv("MODELS_DIR", "models")
-BERT_MODEL_PATH = f"{BASE_PATH}/bert_symptom_model"
-ROBERTA_MODEL_PATH = f"{BASE_PATH}/roberta_model"
-LABEL_MAP_PATH = f"{BASE_PATH}/label_map.csv"
+# HF Hub repo isimleri
+BERT_REPO = "ravzanurcuhaci/bert_symptom_model"
+ROBERTA_REPO = "ravzanurcuhaci/roberta_model"
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 models = {}
 
 def load_models():
-    print("Modeller yükleniyor, lütfen bekleyin...")
+    print("Modeller Hugging Face Hub'dan indiriliyor veya cache'den yükleniyor, lütfen bekleyin...")
     
-    # Label Map
-    label_map_df = pd.read_csv(LABEL_MAP_PATH)
+    # Label Map'ı dinamik olarak BERT deposundan indir
+    label_map_path = hf_hub_download(repo_id=BERT_REPO, filename="label_map.csv")
+    label_map_df = pd.read_csv(label_map_path)
     models["id2label"] = dict(zip(label_map_df["label_id"], label_map_df["label"]))
 
     # BERT
-    models["bert_tokenizer"] = AutoTokenizer.from_pretrained(BERT_MODEL_PATH)
-    bert_model = AutoModelForSequenceClassification.from_pretrained(BERT_MODEL_PATH)
+    models["bert_tokenizer"] = AutoTokenizer.from_pretrained(BERT_REPO)
+    bert_model = AutoModelForSequenceClassification.from_pretrained(BERT_REPO)
     bert_model.to(device)
     bert_model.eval()
     models["bert_model"] = bert_model
 
     # RoBERTa
-    models["roberta_tokenizer"] = AutoTokenizer.from_pretrained(ROBERTA_MODEL_PATH)
-    roberta_model = AutoModelForSequenceClassification.from_pretrained(ROBERTA_MODEL_PATH)
+    models["roberta_tokenizer"] = AutoTokenizer.from_pretrained(ROBERTA_REPO)
+    roberta_model = AutoModelForSequenceClassification.from_pretrained(ROBERTA_REPO)
     roberta_model.to(device)
     roberta_model.eval()
     models["roberta_model"] = roberta_model

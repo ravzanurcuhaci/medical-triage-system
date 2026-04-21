@@ -1,3 +1,13 @@
+---
+title: Medical Triage Api
+emoji: ⚕️
+colorFrom: blue
+colorTo: green
+sdk: docker
+pinned: false
+license: mit
+---
+
 # Medical Triage System (Semptom Tabanlı Karar Destek Sistemi)
 
 Bu proje, kullanıcıların yazdığı semptomlara göre olası hastalıkları tahmin eden bir yapay zeka sistemidir. Sistem, sınıflandırma (classification) ve benzer vaka bulma (retrieval) yöntemlerini birlikte kullanır.
