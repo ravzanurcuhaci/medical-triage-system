@@ -69,30 +69,45 @@ def translate_tr_to_en(text: str) -> str:
 
     return tokenizer.decode(outputs[0], skip_special_tokens=True)
 
-def predict_top3(text: str, model_key: str, tokenizer_key: str) -> list[dict]:
-    model = models[model_key]
-    tokenizer = models[tokenizer_key]
+def predict_all_top3(text: str) -> dict:
+    bert_model = models["bert_model"]
+    bert_tokenizer = models["bert_tokenizer"]
+    roberta_model = models["roberta_model"]
+    roberta_tokenizer = models["roberta_tokenizer"]
     id2label = models["id2label"]
 
-    inputs = tokenizer(
-        text,
-        return_tensors="pt",
-        truncation=True,
-        padding=True,
-        max_length=256
-    )
-    inputs = {k: v.to(device) for k, v in inputs.items()}
-
     with torch.no_grad():
-        outputs = model(**inputs)
-        probs = F.softmax(outputs.logits, dim=1)
+        # BERT tahminleri
+        b_inputs = bert_tokenizer(text, return_tensors="pt", truncation=True, padding=True, max_length=256)
+        b_inputs = {k: v.to(device) for k, v in b_inputs.items()}
+        b_outputs = bert_model(**b_inputs)
+        b_probs = F.softmax(b_outputs.logits, dim=1)
 
-    top_probs, top_indices = torch.topk(probs, k=3, dim=1)
+        # RoBERTa tahminleri
+        r_inputs = roberta_tokenizer(text, return_tensors="pt", truncation=True, padding=True, max_length=256)
+        r_inputs = {k: v.to(device) for k, v in r_inputs.items()}
+        r_outputs = roberta_model(**r_inputs)
+        r_probs = F.softmax(r_outputs.logits, dim=1)
 
-    results = []
-    for prob, idx in zip(top_probs[0], top_indices[0]):
-        label = id2label[idx.item()]
-        score = round(prob.item() * 100, 2)
-        results.append({"label": label, "score": score})
+    # İki modelin olasılıklarının ortalamasını (Ensemble) alıyoruz:
+    avg_probs = (b_probs + r_probs) / 2.0
 
-    return results
+    def get_top3_list(probs_tensor):
+        top_probs, top_indices = torch.topk(probs_tensor, k=3, dim=1)
+        results = []
+        from app.department_mapping import get_department, get_disease_tr_name, get_disease_urgency
+        for prob, idx in zip(top_probs[0], top_indices[0]):
+            label = id2label[idx.item()]
+            score = round(prob.item() * 100, 2)
+            department = get_department(label)
+            label_tr = get_disease_tr_name(label)
+            urgency = get_disease_urgency(label)
+            results.append({"label": label, "label_tr": label_tr, "score": score, "department": department, "urgency": urgency})
+        return results
+
+    return {
+        "bert_top3": get_top3_list(b_probs),
+        "roberta_top3": get_top3_list(r_probs),
+        "final_predictions": get_top3_list(avg_probs)
+    }
+
