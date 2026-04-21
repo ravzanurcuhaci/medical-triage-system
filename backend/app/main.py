@@ -22,6 +22,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.post("/predict", response_model=PredictResponse)
 async def predict_endpoint(request: PredictRequest):
     text_tr = request.text_tr
@@ -46,3 +47,6 @@ async def predict_endpoint(request: PredictRequest):
         roberta_top3=all_preds["roberta_top3"],
         final_predictions=all_preds["final_predictions"]
     )
+@app.get("/")
+def read_root():
+    return {"message": "Welcome to Medical Triage AI API! System is UP and Running. 🚀"}
